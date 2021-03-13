@@ -1,0 +1,96 @@
+name: CI
+on:
+  push:
+    branches: '**'
+  pull_request:
+    branches: 'master'
+
+jobs:
+
+  build-awesome:
+
+    name: ${{ matrix.lua_version }}
+    runs-on: ubuntu-18.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        lua_version: [lua5.3, lua5.2]
+        include:
+          - lua_version: lua5.3
+            do_coverage: true
+
+    env:
+      APT_PACKAGES: "libnotify-bin libcairo2-dev gir1.2-gtk-3.0 libpango1.0-dev                \
+                     libxcb-xtest0-dev libxcb-icccm4-dev libxcb-randr0-dev libxcb-keysyms1-dev \
+                     libxcb-xinerama0-dev libdbus-1-dev libxdg-basedir-dev                     \
+                     libstartup-notification0-dev imagemagick libxcb1-dev libxcb-shape0-dev    \
+                     libxcb-util0-dev libx11-xcb-dev libxcb-cursor-dev libxcb-xkb-dev          \
+                     libxcb-xfixes0-dev libxkbcommon-dev libxkbcommon-x11-dev                  \
+                     dbus-x11 xterm xdotool wmctrl xterm xvfb x11-apps libxcb-xrm-dev          \
+                     xutils-dev gir1.2-pango-1.0 libgirepository1.0-dev liblua5.2-dev lua5.2   \
+                     liblua5.3-dev lua5.3"
+
+      LUA: ${{ matrix.lua_version }}
+      LUAINCLUDE: /usr/include/${{ matrix.lua_version }}
+      LUALIBRARY: /usr/lib/x86_64-linux-gnu/lib${{ matrix.lua_version }}.so
+
+    steps:
+
+      - name: Cache apt packages
+        id: cache-apt
+        uses: actions/cache@v2
+        with:
+          path: /var/cache/apt/archives
+          key: apt-packages
+
+      - name: Downloading apt packages
+        if: ${{ steps.cache-apt.outputs.cache-hit }} != true
+        run: |
+          mkdir /tmp/apt_packages && cd /tmp/apt_packages
+          sudo apt-fast update
+          sudo apt-fast install --download-only --no-install-recommends -y ${APT_PACKAGES}
+
+      - name: Install apt packages
+        run: |
+            sudo apt-fast install -y ${APT_PACKAGES}
+            sudo update-alternatives --install /usr/bin/lua lua-interpreter `which ${LUA}` 40
+
+      - name: Install luarocks (+lgi)
+        run: |
+          wget https://github.com/luarocks/luarocks/archive/v3.0.4.tar.gz
+          tar xf v3.0.4.tar.gz -C /tmp
+          bash -c "cd /tmp/luarocks-*                                                                  \
+            && ./configure --lua-version=${LUA/lua/} --with-lua-include=${LUAINCLUDE} ${LUAROCKS_ARGS} \
+            && make build                                                                              \
+            && sudo make install"
+          luarocks install --local lgi
+          luarocks install --local busted
+
+      - name: installing do_coverage dependencies
+        run: luarocks install --local cluacov
+        if: ${{ matrix.do_coverage }} == true
+
+      - name: installing do_QA dependencies
+        run: |
+          luarocks install --local luacheck
+          luarocks install --local depgraph
+          luarocks install --local ldoc
+        if: ${{ matrix.do_qa }} == true
+
+      - name: installing api_doc dependencies
+        run:
+          luarocks install --local ldoc
+
+      - uses: actions/checkout@v2
+
+      # build awesome
+      - name: Build Awesome
+        run: |
+          echo Lua include dir: ${LUAINCLUDE}
+          echo Lua library: ${LUALIBRARY}
+          sudo update-alternatives --set lua-interpreter `which ${LUA}`
+          export CMAKE_ARGS="-DLUA_LIBRARY=${LUALIBRARY} -D LUA_INCLUDE_DIR=${LUAINCLUDE} \
+                             -D OVERRIDE_VERSION=$AWESOME_VERSION -D STRICT_TESTS=true    \
+                             -D DO_COVERAGE=$DO_COVERAGE -D TEST_MANUAL_SCREENS=$MANUAL_SCREENS -D CMAKE_C_FLAGS=-Werror"
+          make
