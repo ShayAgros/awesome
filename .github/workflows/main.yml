@@ -77,7 +77,9 @@ jobs:
       # This way, packages will be checked for updates once every week.
       - name: Get Date
         id: get-date
-        run: echo "::set-output name=date::$(/bin/date -u "+%Y%W")"
+        run: |
+          echo "::set-output name=date::$(/bin/date -u "+%Y%W")"
+          echo "matrix screen size is "${{ matrix.tests_screen_size }}
 
       - name: Create apt cache directory
         run: mkdir /tmp/apt
@@ -397,3 +399,4 @@ jobs:
             exit 1
           fi
 
+# vim: filetype=yaml:expandtab:shiftwidth=2:tabstop=2
