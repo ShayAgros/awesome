@@ -66,7 +66,7 @@ jobs:
     env:
       LUA: ${{ matrix.lua_version }}
       LUAINCLUDE: /usr/include/lua${{ matrix.lua_version }}
-      LUALIBRARY: /usr/lib/x86_64-linux-gnu/liblua${{ matrix.lua_version }}.so
+      LUALIBRARY: ${{ matrix.lua_library || format('/usr/lib/x86_64-linux-gnu/liblua{0}.so', matrix.lua_version) }}
       TESTS_SCREEN_SIZE: ${{ matrix.tests_screen_size || '' }}
       SOURCE_DATE_EPOCH: ${{ matrix.source_date_epoch || '' }}
       TEST_TIMEOUT: '100'
@@ -80,6 +80,7 @@ jobs:
         run: |
           echo "::set-output name=date::$(/bin/date -u "+%Y%W")"
           echo "matrix screen size is "${{ matrix.tests_screen_size }}
+          echo "lua library envvar is "${{ env.LUALIBRARY }}
 
       - name: Create apt cache directory
         run: mkdir /tmp/apt
