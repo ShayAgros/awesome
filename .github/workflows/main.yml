@@ -82,14 +82,14 @@ jobs:
           echo "matrix screen size is "${{ matrix.tests_screen_size }}
           echo "lua library envvar is "${{ env.LUALIBRARY }}
 
-      - name: Create apt cache directory
-        run: mkdir /tmp/apt
+      #- name: Create apt cache directory
+        #run: mkdir /tmp/apt
 
       - name: Cache apt packages
         id: cache-apt
         uses: actions/cache@v2
         with:
-          path: /tmp/apt/*.deb
+          path: /tmp/apt
           # The trailing number serves as a version flag that can be incremented
           # to invalidate the cache after changing the list of packages.
           key: ${{ github.workflow }}-${{ runner.os }}-${{ steps.get-date.outputs.date }}-apt-3
@@ -97,6 +97,7 @@ jobs:
       - name: Download apt packages
         if: steps.cache-apt.outputs.cache-hit != 'true'
         run: |
+          mkdir /tmp/apt
           sudo apt-get update
           sudo apt-get install --download-only -y --no-install-recommends \
             asciidoctor \
