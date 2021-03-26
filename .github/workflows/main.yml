@@ -252,6 +252,7 @@ jobs:
           fi
 
           echo "AWESOME_VERSION=${AWESOME_VERSION}" >> ${GITHUB_ENV}
+          #echo AWESOME_VERSION
 
       - name: Configure CMake
         run: |
@@ -261,7 +262,7 @@ jobs:
             -DLUA_INCLUDE_DIR=${{ matrix.lua_include_dir || env.LUAINCLUDE }} \
             -DGENERATE_DOC=OFF \
             -DGENERATE_MANPAGES=OFF \
-            -DDO_COVERAGE=${{ matrix.coverage != '' && 'ON' || 'OFF' }} \
+            -DDO_COVERAGE=${{ matrix.coverage && 'ON' || 'OFF' }} \
             -DTEST_MANUAL_SCREENS=${{ matrix.manual_screens }} \
             -DSTRICT_TESTS=true \
             -DCMAKE_C_FLAGS="-Werror"
